@@ -16,20 +16,21 @@ var sendRequest = function(result, components) {
         const deviceId = getUrlParameter('deviceId');
         const slotId = getUrlParameter('slotId');
         const id = getUrlParameter('id');
-        let url = `/statistics/activityPagePerf?type=12&id=${id}&slotId=${slotId}&deviceId=${deviceId}&fp=${result}`
-        if (selectSlotId.indexOf(slotId) === -1) {
+        let params = {};
+        let url = `/statistics/activityPagePerf?type=fingerprint&id=${id}&slotId=${slotId}&deviceId=${deviceId}&fp=${result}`
+        if (!slotId || selectSlotId.indexOf(Number(slotId)) === -1) {
             return;
         }
-        if (Array.isArray(components)) {
+        if (components && Array.isArray(components)) {
             for(let item of components) {
                if(unclude.indexOf(item.key) === -1) {
                   cp.push(item);
                }
             }
             cp = JSON.stringify(cp);
-            url += '&cp=' + cp;
+            params.cp = cp
         }
-        TRequest.httpGetAsync(url, function () {
+        TRequest.httpPostAsync(url, params, function () {
             console.log('Tracking request has sent with fingerprint: ', result);
         });
         

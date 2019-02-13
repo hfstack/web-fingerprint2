@@ -4,13 +4,13 @@
   "description": "",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "rollup -c --watch"
+    "dev": "rollup -c --watch",
+    "build": "NODE_ENV=production rollup -c"
   },
   "author": "huanglongfei",
   "license": "ISC",
   "devDependencies": {
     "@babel/core": "^7.2.2",
-    "@babel/plugin-transform-runtime": "^7.2.0",
     "@babel/preset-env": "^7.3.1",
     "rollup": "^1.1.2",
     "rollup-plugin-babel": "^4.3.2",
