@@ -16,6 +16,7 @@ let configs = {
     plugins: [
       resolve(),
       babel({
+        runtimeHelpers: true,
         exclude: 'node_modules/**'            //排除node_modules文件夹;
       }),
       commonjs(),
@@ -26,7 +27,7 @@ let configs = {
     configs.plugins = configs.plugins.concat([
       serve({
         contentBase: 'dist/',   //启动文件夹;
-        host: 'localhost',      //设置服务器;
+        host: '127.0.0.1',      //设置服务器;
         port: 10001             //端口号;
       }), 
       livereload({

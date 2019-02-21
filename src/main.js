@@ -3,7 +3,7 @@ import { getUrlParameter } from '../lib/tool'
 import '../lib/anycookie.js';
 import request from '../lib/request';
 var TRequest = new request();
-const uid = AC.get("uid")
+const uid = AC.get("tguid")
 var sendRequest = function(result, components) {
     if(!result) {
         console.error('请填写指纹');
@@ -12,7 +12,6 @@ var sendRequest = function(result, components) {
     try {
         let cp = []
         const unclude = ['canvas', 'fonts', 'webgl'];
-        const selectSlotId = [252815];
         const deviceId = getUrlParameter('deviceId');
         const slotId = getUrlParameter('slotId');
         const id = getUrlParameter('id');
@@ -20,9 +19,6 @@ var sendRequest = function(result, components) {
             timestamp: Date.now()
         };
         let url = `/statistics/activityPagePerf?type=fingerprint&id=${id}&sId=${slotId}&deviceId=${deviceId}&fp=${result}`
-        if (!slotId || selectSlotId.indexOf(Number(slotId)) === -1) {
-            return;
-        }
         if (components && Array.isArray(components)) {
             for(let item of components) {
                if(unclude.indexOf(item.key) === -1) {
@@ -49,9 +45,9 @@ var defaultOptions = {
     },
     fonts: {
         swfContainerId: 'fingerprintjs2',
-        swfPath: 'flash/compiled/FontList.swf',
+        swfPath: '',
         userDefinedFonts: [],
-        extendedJsFonts: false
+        extendedJsFonts: true
     },
     screen: {
         // 当用户旋转移动设备时确保指纹一致
@@ -71,36 +67,57 @@ var defaultOptions = {
         'doNotTrack': true,
         // 已经使用JS字体
         'fontsFlash': true,
-        userAgent: true
     },
     NOT_AVAILABLE: 'not available',
     ERROR: 'error',
     EXCLUDED: 'excluded'
 }
-if (!uid) {
-    if (window.requestIdleCallback) {
-            requestIdleCallback(function () {
-                Fingerprint2.get(function (components) {
-                    Fingerprint2.getV18(defaultOptions, function (result, components) {
-                        AC.set("uid", result);
-                        console.log('set', result);
-                        console.log(components);
-                        sendRequest(result, components);
-                    })
-                })
-            })
-        } else {
-            setTimeout(function () {
-                Fingerprint2.get(function (components) {
-                    Fingerprint2.getV18(defaultOptions, function (result, components) {
-                        console.log(result);//结果是哈希指纹
-                        console.log(components, 2);//组件是{key：'foo'的数组，值：'组件值'}
-                        sendRequest(result, components);
-                    })
-                })  
-            }, 500)
-        }
-} else {
-    sendRequest(uid);
-    console.log('get', uid);
+const getIPLocal = function(callback) {
+    try {
+        // {"code":"0000000","desc":"成功","data":{"id":63982362,"startIpNum":0,"endIpNum":28877260300,"country":"中国","province":"安徽","city":"黄山","district":"","isp":"铁通","code":341000},"success":true} ip
+        TRequest.httpGetAsync('/common/ip', function (res) {
+            res = JSON.parse(res);
+            let location = null;
+            if(res.code === '0000000') {
+                location =  res.data.province + '/' + res.data.city
+            }
+            callback && callback({location})
+        });
+    } catch(e) {
+        console.log(e)
+        callback && callback()
+    }
 }
+const getFingerprint = () => {
+    requestIdleCallback(function () {
+        Fingerprint2.get(defaultOptions, function (components) {
+            getIPLocal(function(data) {
+                if (data && data.location) {
+                    components.push({
+                        key: 'location',
+                        value: data.location
+                    })
+                }
+                var values = components.map(function (component) { return component.value })
+                var murmur = Fingerprint2.x64hash128(values.join(''), 31)
+                AC.set("tguid", murmur);
+                sendRequest(murmur, components);
+                console.log(murmur)
+                console.log(components, 1)
+            })
+            
+        }) 
+    })
+}
+// if (!uid) {
+    if (window.requestIdleCallback) {
+        getFingerprint()
+    } else {
+        setTimeout(function () {
+            getFingerprint()
+        }, 500)
+    }
+// } else {
+//     sendRequest(uid);
+//     console.log('get', uid);
+// }
