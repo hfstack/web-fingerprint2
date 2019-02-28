@@ -1,37 +1,48 @@
 import Fingerprint2 from 'fingerprintjs2';
-import { getUrlParameter } from '../lib/tool'
+import { getUrlParameter, GetCookie } from '../lib/tool'
 import '../lib/anycookie.js';
 import request from '../lib/request';
 var TRequest = new request();
-const uid = AC.get("tguid")
-var sendRequest = function(result, components) {
+
+const TdeviceId = AC.get("tdeviceId"); // 本地存储设备id
+const fp = AC.get("fp"); // 指纹id
+const deviceId = getUrlParameter('deviceId'); // url设备id
+const slotId = getUrlParameter('slotId');// 广告位id
+const id = getUrlParameter('id');// 活动id
+
+// 获取当前状态
+const getStatus = function() {
+    let status = 0;
+    const cid = GetCookie("TdeviceId") // cookie 存储的设备id
+    const lid = localStorage && localStorage.getItem("TdeviceId"); // localstoragy 存储的设备id
+    if(!cid && !lid) {
+        // 用户第一次进入
+        status = 1;
+        AC.set("TdeviceId", deviceId);
+    } else if(cid && lid) {
+        // 第二次进来且没有清缓存
+        // cookie和localstoragy 都不清理
+        // 2 当前的本地存储和实际一致 3 当前的本地存储和不一致
+        status = lid === deviceId ? 2 : 3;
+    } else if(lid && !cid) {
+        // localstoragy 不清 cookie清理
+        status = lid === deviceId ? 4 : 5;
+    }
+    return status;
+}
+
+// 请求
+const sendRequest = function(result, components) {
     if(!result) {
         console.error('请填写指纹');
         return;
     }
+    const status = getStatus();
     try {
-        let cp = []
-        const unclude = ['canvas', 'fonts', 'webgl'];
-        const deviceId = getUrlParameter('deviceId');
-        const slotId = getUrlParameter('slotId');
-        const id = getUrlParameter('id');
-        let params = {
-            timestamp: Date.now()
-        };
-        let url = `/statistics/activityPagePerf?type=fingerprint&id=${id}&sId=${slotId}&deviceId=${deviceId}&fp=${result}`
-        if (components && Array.isArray(components)) {
-            for(let item of components) {
-               if(unclude.indexOf(item.key) === -1) {
-                  cp.push(item);
-               }
-            }
-            cp = JSON.stringify(cp);
-            params.cp = cp
-        }
-        TRequest.httpPostAsync(url, params, function (val) {
+        let url = `/statistics/activityPagePerf?type=fingerprint&id=${id}&sId=${slotId}&deviceId=${deviceId}&fp=${result}&status=${status}`
+        TRequest.httpGetAsync(url, function (val) {
             console.log('Tracking request has sent with fingerprint: ', result);
         });
-        
     } catch (e) {
         console.log(e);
     }
@@ -47,7 +58,7 @@ var defaultOptions = {
         swfContainerId: 'fingerprintjs2',
         swfPath: '',
         userDefinedFonts: [],
-        extendedJsFonts: true
+        extendedJsFonts: false
     },
     screen: {
         // 当用户旋转移动设备时确保指纹一致
@@ -91,6 +102,9 @@ const getIPLocal = function(callback) {
 const getFingerprint = () => {
     requestIdleCallback(function () {
         Fingerprint2.get(defaultOptions, function (components) {
+            // var values = components.map(function (component) { return component.value })
+            // var murmur = Fingerprint2.x64hash128(values.join(''), 31)
+            // sendRequest(murmur, components);
             getIPLocal(function(data) {
                 if (data && data.location) {
                     components.push({
@@ -102,14 +116,12 @@ const getFingerprint = () => {
                 var murmur = Fingerprint2.x64hash128(values.join(''), 31)
                 AC.set("tguid", murmur);
                 sendRequest(murmur, components);
-                console.log(murmur)
-                console.log(components, 1)
             })
             
         }) 
     })
 }
-// if (!uid) {
+if (!fp) {
     if (window.requestIdleCallback) {
         getFingerprint()
     } else {
@@ -117,7 +129,7 @@ const getFingerprint = () => {
             getFingerprint()
         }, 500)
     }
-// } else {
-//     sendRequest(uid);
-//     console.log('get', uid);
-// }
+} else {
+    sendRequest(fp);
+    console.log('get', fp);
+}
