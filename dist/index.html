@@ -5,22 +5,31 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>webfiger</title>
-    <script type="text/javascript" src="./webfiger.min.js"></script>
-
 </head>
 <body>
     <h2>webfiger</h2>
     <div>
         <div id="result">请打开控制台</div>
     </div>
-    <div id='fp'></div>
-    <div id='na'></div>
-    <!-- <script>
-        let str = '';
-        for(let p in window.navigator) {
-            str += `<p>${p}: ${window.navigator[p]}<p>`
-        }
-        document.getElementById('na').innerHTML = str
-    </script> -->
+    <script>
+        alert(window.WebViewJavascriptBridge);
+        (function(w) {
+          // sdk加载失败重试次数
+          var times = 3;
+          var appendScript = function appendScript() {
+            var randomh = Math.random();
+            var sc = document.createElement('script');
+            sc.src = './webfiger.min.js?x=' + randomh;
+            sc.crossOrigin = 'anonymous';
+            sc.onerror = function() {
+              times--;
+              times > 0 && setTimeout(appendScript, 2500);
+            };
+            document.head && document.head.appendChild(sc);
+          };
+          w.addEventListener('load', appendScript);
+        })(window);
+    </script>
+    <!-- <script>!function(n){var e=3;n.addEventListener("load",function n(){var o=Math.random(),r=document.createElement("script");r.src="//yun.dui88.com/figerprint/webfiger.cache.js?x="+o,r.crossOrigin="anonymous",r.onerror=function(){--e>0&&setTimeout(n,2500)},document.head&&document.head.appendChild(r)})}(window);</script> -->
 </body>
 </html>

@@ -4,7 +4,7 @@ import '../lib/anycookie.js';
 import request from '../lib/request';
 var TRequest = new request();
 
-const TdeviceId = AC.get("tdeviceId"); // 本地存储设备id
+// const TdeviceId = AC.get("tdeviceId"); // 本地存储设备id
 const fp = AC.get("fp"); // 指纹id
 const deviceId = getUrlParameter('deviceId'); // url设备id
 const slotId = getUrlParameter('slotId');// 广告位id
@@ -13,24 +13,28 @@ const id = getUrlParameter('id');// 活动id
 // 获取当前状态
 const getStatus = function() {
     let status = 0;
-    const cid = GetCookie("TdeviceId") // cookie 存储的设备id
-    const lid = localStorage && localStorage.getItem("TdeviceId"); // localstoragy 存储的设备id
-    if(!cid && !lid) {
-        // 用户第一次进入
-        status = 1;
-        AC.set("TdeviceId", deviceId);
-    } else if(cid && lid) {
-        // 第二次进来且没有清缓存
-        // cookie和localstoragy 都不清理
-        // 2 当前的本地存储和实际一致 3 当前的本地存储和不一致
-        status = lid === deviceId ? 2 : 3;
-    } else if(lid && !cid) {
-        // localstoragy 不清 cookie清理
-        status = lid === deviceId ? 4 : 5;
+    try {
+        const cid = GetCookie("TdeviceId") // cookie 存储的设备id
+        const lid = localStorage && localStorage.getItem("TdeviceId"); // localstoragy 存储的设备id
+        if(!cid && !lid) {
+            // 用户第一次进入
+            status = 1;
+            AC.set("TdeviceId", deviceId);
+        } else if (cid && lid) {
+            // 第二次进来且没有清缓存
+            // cookie和localstoragy 都不清理
+            // 2 当前的本地存储和实际一致 3 当前的本地存储和不一致
+            status = lid === deviceId ? 2 : 3;
+        } else if (lid && !cid) {
+            // localstoragy 不清 cookie清理
+            status = lid === deviceId ? 4 : 5;
+        }
+    } catch (err) {
+       console.log(err)
+       return status;
     }
     return status;
 }
-
 // 请求
 const sendRequest = function(result, components) {
     if(!result) {
@@ -100,36 +104,38 @@ const getIPLocal = function(callback) {
     }
 }
 const getFingerprint = () => {
-    requestIdleCallback(function () {
-        Fingerprint2.get(defaultOptions, function (components) {
-            // var values = components.map(function (component) { return component.value })
-            // var murmur = Fingerprint2.x64hash128(values.join(''), 31)
-            // sendRequest(murmur, components);
-            getIPLocal(function(data) {
-                if (data && data.location) {
-                    components.push({
-                        key: 'location',
-                        value: data.location
-                    })
-                }
-                var values = components.map(function (component) { return component.value })
-                var murmur = Fingerprint2.x64hash128(values.join(''), 31)
-                AC.set("tguid", murmur);
-                sendRequest(murmur, components);
-            })
-            
-        }) 
-    })
+    Fingerprint2.get(defaultOptions, function (components) {
+        // var values = components.map(function (component) { return component.value })
+        // var murmur = Fingerprint2.x64hash128(values.join(''), 31)
+        // AC.set("fp", murmur);
+        // sendRequest(murmur, components);
+        getIPLocal(function(data) {
+            if (data && data.location) {
+                components.push({
+                    key: 'location',
+                    value: data.location
+                })
+            }
+            var values = components.map(function (component) { return component.value })
+            var murmur = Fingerprint2.x64hash128(values.join(''), 31)
+            AC.set("fp", murmur);
+            sendRequest(murmur, components);
+        })
+        
+    }) 
+    
 }
 if (!fp) {
     if (window.requestIdleCallback) {
-        getFingerprint()
+        requestIdleCallback(function () {
+            getFingerprint()
+        })
     } else {
         setTimeout(function () {
             getFingerprint()
         }, 500)
     }
 } else {
-    sendRequest(fp);
     console.log('get', fp);
+    sendRequest(fp);
 }
