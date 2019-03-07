@@ -11,8 +11,23 @@
     <div>
         <div id="result">请打开控制台</div>
     </div>
+    <div id="show"></div>
     <script>
-        alert(window.WebViewJavascriptBridge);
+        var ca = document.createElement('canvas')
+        var size = 10
+        ca.width = size
+        ca.height = size
+        ca.id = 'mycanvas'
+        document.body.appendChild(ca)
+        var ctx = ca.getContext('2d')
+        ctx.fillStyle = 'GrayText'
+        ctx.rect(0, 0, size, size)
+        ctx.fill()
+        var imageData = ctx.getImageData(0, 0, size, size).data
+        console.log(imageData)
+        document.getElementById('show').innerHTML = imageData[0] + '-' + imageData[1] + '-' + imageData[2] + '-' + imageData[3]
+    </script>
+    <script>
         (function(w) {
           // sdk加载失败重试次数
           var times = 3;
