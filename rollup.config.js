@@ -17,7 +17,7 @@ let configs = {
       resolve(),
       babel({
         runtimeHelpers: true,
-        exclude: 'node_modules/**'            //排除node_modules文件夹;
+        exclude: 'node_modules/**',           //排除node_modules文件夹;
       }),
       commonjs(),
       uglify()
@@ -27,7 +27,7 @@ let configs = {
     configs.plugins = configs.plugins.concat([
       serve({
         contentBase: 'dist/',   //启动文件夹;
-        host: '172.16.62.158',      //设置服务器;
+        host: '172.16.63.180',      //设置服务器;
         port: 10001             //端口号;
       }), 
       livereload({
