@@ -5,37 +5,36 @@ import request from '../lib/request';
 import '../lib/anycookie.js';
 
 const TRequest = new request();
-const uuidkey = 'uuid4';
-const fpkey = 'fp4';
+const uuidkey = 'uuid5';
+const fpkey = 'fp5';
 
 const fp = AC.get(fpkey) || ''; // 指纹id
+// const fp = ''; // 指纹id
 
 const deviceId = getUrlParameter('deviceId'); // url设备id
 const slotId = getUrlParameter('slotId');// 广告位id
-const couponSkinId = (window.CFG && window.CFG.couponSkinId) || ''
-// const couponIds = [212] // 元旦大转盘-区块
+const appId = (window.CFG && window.CFG.appId) || ''
+const appIds = ["38372", '57400', '50150', '57045', '25857', '51950', '27131', '57599', '57795'] // 元旦大转盘-区块
 
 // 用户添加请求
 const sendRequest = function (fp) {
-   
     if (!fp) {
         console.error('请填写指纹');
         return;
     }
-    // if(couponIds.indexOf(couponSkinId) === -1) {
-    //     console.error('当前活动不支持');
-    //     return;
-    // }
+    if(appIds.indexOf(appId) === -1) {
+        console.error('当前app不支持');
+        return;
+    }
     const status = {
         acivityId: getUrlParameter('id'), // 活动id
-        appId: (window.CFG && window.CFG.appId) || '',
-        couponSkinId
+        appId,
     }
     try {
         let url = '//hunter.dui88.com/fingerprint/userAdd'
         TRequest.httpPostAsync(url, {
             fingerprint: fp,
-            uuid: AC.get(uuidkey),
+            uuid: AC.get(uuidkey) || '',
             deviceId,
             sid: slotId,
             status: JSON.stringify(status)
@@ -49,6 +48,10 @@ const sendRequest = function (fp) {
 // 用户添加请求
 const userFind = (fp) => {
     return new Promise((resolve, reject) => {
+        if(appIds.indexOf(appId) === -1) {
+            reject('不在app请求列表中')
+            return;
+        }
         TRequest.httpGetAsync(`//hunter.dui88.com/fingerprint/userFind?fingerprint=${fp}`, (res) => {
             res = JSON.parse(res);
             if (res && res.code === 0) {
@@ -65,7 +68,7 @@ const defaultOptions = {
     preprocessor: function(key, value) {
         if (key == "userAgent") {
           var parser = new UAParser(value); // https://github.com/faisalman/ua-parser-js
-          var userAgentMinusVersion = parser.getOS().name + ' ' + parser.getBrowser().name + ' ' + parser.getDevice().vendor + ' ' + parser.getDevice().model
+          var userAgentMinusVersion = parser.getOS().name + ' ' + parser.getDevice().vendor + ' ' + parser.getDevice().model
           return userAgentMinusVersion
         }
         return value
@@ -99,6 +102,14 @@ const defaultOptions = {
         'doNotTrack': true,
         // 已经使用JS字体
         'fontsFlash': true,
+        'colorDepth': true,
+        'deviceMemory': true,
+        'timezone': true,
+        'openDatabase': true,
+        'canvas': true,
+        'webgl': true,
+        'audio': true,
+        'language': true
     },
     NOT_AVAILABLE: 'not available',
     ERROR: 'error',
@@ -123,10 +134,6 @@ const getIPLocal = function (callback) {
 
 const getFingerprint = (done) => {
     Fingerprint2.get(defaultOptions, function (components) {
-        // var values = components.map(function (component) { return component.value })
-        // var murmur = Fingerprint2.x64hash128(values.join(''), 31)
-        // AC.set("fp", murmur);
-        // sendRequest(murmur, components);
         getIPLocal(function (data) {
             if (data && data.location) {
                 components.push({
