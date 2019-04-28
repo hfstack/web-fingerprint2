@@ -27,7 +27,7 @@ let configs = {
     configs.plugins = configs.plugins.concat([
       serve({
         contentBase: 'dist/',   //启动文件夹;
-        host: '172.16.63.180',      //设置服务器;
+        host: '127.0.0.1',      //设置服务器;
         port: 10001             //端口号;
       }), 
       livereload({

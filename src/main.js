@@ -1,46 +1,48 @@
 import Fingerprint2 from 'fingerprintjs2';
-import { getUrlParameter, GetCookie } from '../lib/tool'
+import { getUrlParameter } from '../lib/tool'
 import UAParser from '../lib/uapase';
 import request from '../lib/request';
 import '../lib/anycookie.js';
-
+// import '../lib/evercookie'
 const TRequest = new request();
 const uuidkey = 'uuid5';
 const fpkey = 'fp5';
 
-const fp = AC.get(fpkey) || ''; // 指纹id
-// const fp = ''; // 指纹id
-
-const deviceId = getUrlParameter('deviceId'); // url设备id
-const slotId = getUrlParameter('slotId');// 广告位id
-const appId = (window.CFG && window.CFG.appId) || ''
-const appIds = ["38372", '57400', '50150', '57045', '25857', '51950', '27131', '57599', '57795'] // 元旦大转盘-区块
-
+const baseUrl = '//finger.dui88.com'
+const deviceId = getUrlParameter('deviceId') || ''; // url设备id
+const slotId = getUrlParameter('slotId') || '';// 广告位id
+const getFP = () => {
+    const uuid = AC.get(uuidkey)
+    if(uuid) {
+        AC.set(`_coll_${uuidkey}`, uuid);
+    }
+    return AC.get(fpkey) || '';
+}
+const appId = (window.CFG && window.CFG.appId) || '';
+const params = {
+    fingerprint: getFP(),
+    uuid: AC.get(`_coll_${uuidkey}`) || deviceId,
+    deviceId,
+    sid: slotId,
+    appId: appId || 0,
+    status: ''
+}
+// evercookie
+// const ec = new evercookie({
+//     lso: false,
+//     silverlight: false,
+//     java: false,
+//     history: false,
+//     pngCookieName: false,
+//     etagCookieName: false,
+//     cacheCookieName: false,
+//     hsts: false
+// });
 // 用户添加请求
-const sendRequest = function (fp) {
-    if (!fp) {
-        console.error('请填写指纹');
-        return;
-    }
-    if(appIds.indexOf(appId) === -1) {
-        console.error('当前app不支持');
-        return;
-    }
-    const status = {
-        acivityId: getUrlParameter('id'), // 活动id
-        appId,
-    }
+const sendRequest = function () {
     try {
-        let url = '//hunter.dui88.com/fingerprint/userAdd'
-        TRequest.httpPostAsync(url, {
-            fingerprint: fp,
-            uuid: AC.get(uuidkey) || '',
-            deviceId,
-            sid: slotId,
-            status: JSON.stringify(status)
-        }, function (val) {
-            console.log('Tracking request has sent with fingerprint: ', fp);
-        });
+        TRequest.httpPostAsync(`${baseUrl}/fingerprint/userAdd`, params);
+        TRequest.httpPostAsync(`${baseUrl}/fingerprint/UVCount`, params);
     } catch (e) {
         console.log(e);
     }
@@ -48,15 +50,15 @@ const sendRequest = function (fp) {
 // 用户添加请求
 const userFind = (fp) => {
     return new Promise((resolve, reject) => {
-        if(appIds.indexOf(appId) === -1) {
-            reject('不在app请求列表中')
-            return;
-        }
-        TRequest.httpGetAsync(`//hunter.dui88.com/fingerprint/userFind?fingerprint=${fp}`, (res) => {
+        TRequest.httpPostAsync(`${baseUrl}/fingerprint/userFind`, Object.assign({}, params, {fingerprint: fp}) , (res) => {
             res = JSON.parse(res);
             if (res && res.code === 0) {
-                AC.set(uuidkey, (res.data || deviceId));
-                resolve(res)
+                const uuid = res.data.uuid || deviceId;
+                AC.set(`_coll_${uuidkey}`, uuid);
+                TRequest.httpPostAsync(`${baseUrl}/fingerprint/UVCount`, Object.assign({}, params, {uuid, fingerprint: fp}), function (val) {
+                    console.log('Tracking request has sent with fingerprint: ', fp);
+                    resolve(res)
+                });
             } else {
                 reject(res)
             }
@@ -80,7 +82,6 @@ const defaultOptions = {
     },
     fonts: {
         swfContainerId: 'fingerprintjs2',
-        swfPath: '../lib/FontList.swf',
         userDefinedFonts: [],
         extendedJsFonts: true
     },
@@ -122,47 +123,41 @@ const getIPLocal = function (callback) {
             res = JSON.parse(res);
             let location = null;
             if (res.code === '0000000') {
-                location = res.data.province + '/' + res.data.city
+                location = (res.data.province || res.data.region || '') + '/' + res.data.city
             }
-            callback && callback({ location })
+            callback && callback(null, { location })
         });
     } catch (e) {
         console.log(e)
-        callback && callback()
+        callback && callback(e)
     }
 }
 
 const getFingerprint = (done) => {
     Fingerprint2.get(defaultOptions, function (components) {
-        getIPLocal(function (data) {
+        getIPLocal(function (err, data) {
+            if(err) {
+                console.log(err)
+                return;
+            }
             if (data && data.location) {
                 components.push({
                     key: 'location',
                     value: data.location
                 })
             }
-            var values = components.map(function (component) { return component.value })
-            var murmur = Fingerprint2.x64hash128(values.join(''), 31)
-            // let str = ''
-            // components.forEach((item) => {
-            //     str += `<p class=""><span class="component">${item.key}:</span>${item.value}</p>`
-            // })
-            // document.getElementById('result').innerText = murmur;
-            // document.getElementById('components').innerHTML = str;
+            const values = components.map(function (component) { return component.value })
+            const murmur = Fingerprint2.x64hash128(values.join(''), 31)
 
             AC.set(fpkey, murmur);
-            AC.set(uuidkey, deviceId);
-            userFind(murmur).then(() => {
-                sendRequest(murmur);
-            }).catch(e => {
-                console.log(e)
-            })
+            AC.set(`_coll_${uuidkey}`, deviceId);
+            userFind(murmur)
         })
 
     })
 
 }
-if (!fp) {
+if (!getFP()) {
     if (window.requestIdleCallback) {
         requestIdleCallback(function () {
             getFingerprint()
@@ -173,6 +168,5 @@ if (!fp) {
         }, 500)
     }
 } else {
-    console.log('get', fp);
-    sendRequest(fp);
+    sendRequest();
 }
