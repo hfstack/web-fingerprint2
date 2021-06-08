@@ -8,7 +8,7 @@ const TRequest = new request();
 const uuidkey = 'uuid5';
 const fpkey = 'fp5';
 
-const baseUrl = '//finger.dui88.com'
+const baseUrl = '//finger.xxx.com'
 const deviceId = getUrlParameter('deviceId') || ''; // url设备id
 const slotId = getUrlParameter('slotId') || '';// 广告位id
 const getFP = () => {
